@@ -1,0 +1,4 @@
+# NOTE: darglint is NOT yet enabled for this repo
+
+[darglint]
+strictness = long
