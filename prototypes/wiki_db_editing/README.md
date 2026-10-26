@@ -42,3 +42,6 @@ They cover the whole flow: queue → approve/reject → gate off → ban. They a
 
 ## Deploying
 Any Python host works (Render, Fly.io, Railway, a VM). For production, point the schema at managed Postgres (e.g. Supabase) and run behind HTTPS.
+
+## License
+Contributed under the repository's license (GNU GPL v3, see [LICENSE](../../LICENSE)).

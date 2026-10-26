@@ -64,3 +64,28 @@ def test_bad_state_rejected(app, monkeypatch):
 def test_dev_login_disabled_by_default(tmp_path):
     a = create_app({"DATABASE_PATH": str(tmp_path / "x.db"), "DEV_LOGIN": False})
     assert a.test_client().post("/dev-login", data={"name": "a"}).status_code == 404
+
+
+def test_google_oauth_callback(app, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid"); monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "s")
+    c = app.test_client()
+    r = c.get("/login/google")
+    assert r.location.startswith("https://accounts.google.com/o/oauth2/v2/auth")
+    with c.session_transaction() as s:
+        state = s["oauth_state"]
+    tok = mock.Mock(json=lambda: {"access_token": "T"})
+    info = mock.Mock(json=lambda: {"sub": "g1", "name": "Gina", "email": "gina@x"})
+    with mock.patch("app.requests.post", return_value=tok), mock.patch("app.requests.get", return_value=info):
+        c.get(f"/auth/google/callback?code=abc&state={state}")
+    c.post("/entry/new", data={"name": "G coop", "website": "", "location": "", "description": ""})
+    assert c.get("/admin").status_code == 403  # normal contributor
+    assert b"G coop" not in c.get("/").data
+
+
+def test_blank_fields_can_be_filled(app):
+    a = app.test_client(); login(a, "Admin", admin=True)
+    a.post("/entry/new", data={"name": "Coop B", "website": "", "location": "", "description": ""})
+    u = app.test_client(); login(u, "Bob")
+    u.post("/entry/1/edit", data={"name": "Coop B", "website": "b.org", "location": "", "description": ""})
+    a.post("/admin/proposal/2/approve")
+    assert b"b.org" in u.get("/").data
